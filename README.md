@@ -1,6 +1,6 @@
 # 简单 AI 聊天
 
-一个基于原生 JavaScript 和 HTML/CSS 构建的轻量级网页 AI 聊天界面。
+一个基于原生 JavaScript 和 HTML/CSS 构建的轻量级网页 AI 聊天界面, 基于Liteagent， 支持openai调用标准。
 
 ## 功能特性
 
@@ -39,7 +39,7 @@ const client = new LiteAgent.LiteAgentClient({
 ## 文件结构
 
 ```
-├── chat_app.html          # 主应用程序文件
+├── index.html          # 主应用程序文件
 └── README.md             # 项目文档
 ```
 
