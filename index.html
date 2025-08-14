@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polpo AI Chat App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .debug-panel {
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .debug-toggle {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-bottom: 10px;
+        }
+
+        .debug-content {
+            display: none;
+            max-height: 100px;
+            overflow-y: auto;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+
+        .debug-content.active {
+            display: block;
+        }
+
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+            /* Mobile scroll optimization */
+            -webkit-overflow-scrolling: touch;
+            /* GPU acceleration for smooth scrolling */
+            will-change: scroll-position;
+            /* Improve scroll performance */
+            scroll-behavior: smooth;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-end;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            position: relative;
+            word-wrap: break-word;
+            /* Performance optimizations */
+            contain: layout style;
+            transform: translateZ(0);
+        }
+
+        .message.user .message-bubble {
+            width: auto;
+            max-width: 60%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.claude .message-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #e9ecef;
+            border-bottom-left-radius: 5px;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            margin-bottom: 15px;
+            background: white;
+            border-radius: 20px;
+            border-bottom-left-radius: 5px;
+            max-width: 75%;
+            border: 1px solid #e9ecef;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 3px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            animation: typing 1.4s infinite;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            60%,
+            100% {
+                opacity: 0.3;
+            }
+
+            30% {
+                opacity: 1;
+            }
+        }
+
+        .input-area {
+            background: white;
+            border-top: 1px solid #e9ecef;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-field {
+            flex: 1;
+            border: 1px solid #e9ecef;
+            border-radius: 20px;
+            padding: 12px 16px;
+            font-size: 14px;
+            outline: none;
+            resize: none;
+            max-height: 80px;
+            min-height: 40px;
+        }
+
+        .input-field:focus {
+            border-color: #667eea;
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+
+        .send-button:hover {
+            transform: scale(1.1);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .test-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .queue-indicator {
+            background: #ffc107;
+            color: #212529;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            margin-left: 10px;
+        }
+
+        /* Markdown content styles */
+        .message-bubble h1,
+        .message-bubble h2,
+        .message-bubble h3,
+        .message-bubble h4,
+        .message-bubble h5,
+        .message-bubble h6 {
+            margin: 0.5em 0 0.3em 0;
+            font-weight: 600;
+        }
+
+        .message-bubble h1 {
+            font-size: 1.5em;
+        }
+
+        .message-bubble h2 {
+            font-size: 1.3em;
+        }
+
+        .message-bubble h3 {
+            font-size: 1.1em;
+        }
+
+        .message-bubble p {
+            margin: 0.5em 0;
+            line-height: 1.4;
+        }
+
+        .message-bubble ul,
+        .message-bubble ol {
+            margin: 0.5em 0;
+            padding-left: 1.2em;
+        }
+
+        .message-bubble li {
+            margin: 0.2em 0;
+        }
+
+        .message-bubble blockquote {
+            margin: 0.5em 0;
+            padding: 0.5em 0.8em;
+            border-left: 3px solid #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 0 5px 5px 0;
+        }
+
+        .message-bubble code {
+            background: rgba(0, 0, 0, 0.1);
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }
+
+        .message-bubble pre {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 0.8em;
+            margin: 0.5em 0;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }
+
+        .message-bubble pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+        }
+
+        .message-bubble a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .message-bubble a:hover {
+            text-decoration: underline;
+        }
+
+        .message-bubble table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0.5em 0;
+        }
+
+        .message-bubble th,
+        .message-bubble td {
+            border: 1px solid #e9ecef;
+            padding: 0.3em 0.5em;
+            text-align: left;
+        }
+
+        .message-bubble th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .message-bubble hr {
+            border: none;
+            border-top: 1px solid #e9ecef;
+            margin: 1em 0;
+        }
+
+        /* Code highlighting adjustments for dark theme in user messages */
+        .message.user .message-bubble code {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .message.user .message-bubble pre {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            Polpo Chat
+            <span id="queueIndicator" class="queue-indicator" style="display: none;"></span>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div class="message claude">
+                <div class="message-bubble">你好！我是小夏，您的厦门本地金牌导游AI助手😊。请问有什么可以帮您的吗？比如想了解哪个景点、需要行程规划，还是餐饮美食推荐？期待为您服务！</div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <textarea class="input-field" id="messageInput" placeholder="Type a message..." rows="1"></textarea>
+            <button class="send-button" id="sendButton" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <!-- Lite agent sdk -->
+    <script src="https://unpkg.com/liteagent-sdk/dist/index.umd.js"></script>
+    <!-- Marked.js for markdown rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/16.1.2/lib/marked.umd.js"></script>
+    <script>
+        const client = new LiteAgent.LiteAgentClient({
+            apiKey: 'sk-XXX',
+            baseUrl: 'https://www.liteagent.cn/liteAgent/v1'
+        });
+
+        class ChatApp {
+            constructor() {
+                this.messages = [];
+                this.messageQueue = [];
+                this.conversationHistory = [];
+                this.isProcessing = false;
+                this.typingTimeout = null;
+                this.messageId = 0;
+                this.session = null;
+                this.currentStreamingMessage = null;
+                
+                // Performance optimization properties
+                this.updateDebounceTimeout = null;
+                this.scrollDebounceTimeout = null;
+                this.scrollDetectionTimeout = null;
+                this.lastUpdateTime = 0;
+                this.updateThrottleMs = 16; // ~60fps
+                this.shouldAutoScroll = true;
+
+                this.initializeApp();
+                this.initializeLiteAgent();
+                this.initializeMarkdown();
+            }
+
+            initializeMarkdown() {
+                // Configure marked.js options
+                if (typeof marked !== 'undefined') {
+                    marked.setOptions({
+                        breaks: true,
+                        gfm: true,
+                        sanitize: false
+                    });
+                }
+            }
+
+            initializeApp() {
+                // Setup event listeners
+                document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                document.getElementById('messageInput').addEventListener('input', (e) => {
+                    this.autoResize(e.target);
+                });
+
+                // Add scroll event listener to detect user scrolling
+                const chatArea = document.getElementById('chatArea');
+                chatArea.addEventListener('scroll', () => {
+                    this.handleUserScroll();
+                }, { passive: true });
+
+                // Add touch event optimizations for mobile
+                chatArea.addEventListener('touchstart', () => {
+                    this.shouldAutoScroll = false;
+                }, { passive: true });
+
+                chatArea.addEventListener('touchend', () => {
+                    // Re-enable auto scroll if user is at bottom
+                    setTimeout(() => {
+                        this.handleUserScroll();
+                    }, 100);
+                }, { passive: true });
+
+            }
+
+            // Optimized methods for performance
+            handleUserScroll() {
+                clearTimeout(this.scrollDetectionTimeout);
+                this.scrollDetectionTimeout = setTimeout(() => {
+                    const chatArea = document.getElementById('chatArea');
+                    const isAtBottom = chatArea.scrollTop >= chatArea.scrollHeight - chatArea.clientHeight - 50;
+                    this.shouldAutoScroll = isAtBottom;
+                }, 100);
+            }
+
+            throttledUpdateMessage(messageBubble, content) {
+                const now = Date.now();
+                
+                if (now - this.lastUpdateTime < this.updateThrottleMs) {
+                    clearTimeout(this.updateDebounceTimeout);
+                    this.updateDebounceTimeout = setTimeout(() => {
+                        this.updateMessageContent(messageBubble, content);
+                    }, this.updateThrottleMs);
+                } else {
+                    this.updateMessageContent(messageBubble, content);
+                    this.lastUpdateTime = now;
+                }
+            }
+
+            updateMessageContent(messageBubble, content) {
+                messageBubble.innerHTML = this.renderMarkdown(content);
+                this.throttledScroll();
+            }
+
+            throttledScroll() {
+                if (!this.shouldAutoScroll) return;
+                
+                clearTimeout(this.scrollDebounceTimeout);
+                this.scrollDebounceTimeout = setTimeout(() => {
+                    requestAnimationFrame(() => {
+                        const chatArea = document.getElementById('chatArea');
+                        chatArea.scrollTop = chatArea.scrollHeight;
+                    });
+                }, 50);
+            }
+
+            async initializeLiteAgent() {
+                const maxRetries = 3;
+                let retryCount = 0;
+
+                while (retryCount < maxRetries) {
+                    try {
+                        this.session = await client.initSession();
+                        return;
+                    } catch (error) {
+                        retryCount++;
+
+                        if (retryCount >= maxRetries) {
+                            this.addMessage('claude', '初始化AI服务失败，请稍后重试或刷新页面。');
+                            return;
+                        }
+
+                        // Wait before retry
+                        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+                    }
+                }
+            }
+
+            autoResize(textarea) {
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            }
+
+            sendMessage() {
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+
+                if (!message) return;
+
+                // Add user message to chat
+                this.addMessage('user', message);
+
+                // Add to queue for processing
+                this.messageQueue.push({
+                    id: ++this.messageId,
+                    text: message,
+                    timestamp: Date.now()
+                });
+
+                // Clear input
+                input.value = '';
+                input.style.height = 'auto';
+
+                // Update queue indicator
+                this.updateQueueIndicator();
+
+                // Process queue
+                this.processMessageQueue();
+            }
+
+            addMessage(sender, text, status = 'delivered') {
+                const chatArea = document.getElementById('chatArea');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+
+                // Render markdown for AI messages, plain text for user messages
+                let renderedContent;
+                if (sender === 'claude' && typeof marked !== 'undefined') {
+                    renderedContent = marked.parse(text);
+                } else {
+                    renderedContent = this.escapeHtml(text).replace(/\n/g, '<br>');
+                }
+
+                messageDiv.innerHTML = `
+                    <div class="message-bubble">${renderedContent}</div>
+                `;
+
+                chatArea.appendChild(messageDiv);
+                chatArea.scrollTop = chatArea.scrollHeight;
+
+                // Store in conversation history
+                this.conversationHistory.push({
+                    role: sender === 'user' ? 'user' : 'assistant',
+                    content: text
+                });
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            renderMarkdown(text) {
+                if (typeof marked !== 'undefined') {
+                    return marked.parse(text);
+                }
+                return this.escapeHtml(text).replace(/\n/g, '<br>');
+            }
+
+            showTypingIndicator() {
+                const chatArea = document.getElementById('chatArea');
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'typing-indicator';
+                typingDiv.id = 'typingIndicator';
+
+                typingDiv.innerHTML = `
+                    <div class="typing-dots">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </div>
+                `;
+
+                chatArea.appendChild(typingDiv);
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+
+            hideTypingIndicator() {
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+
+            updateQueueIndicator() {
+                const indicator = document.getElementById('queueIndicator');
+                if (this.messageQueue.length > 0) {
+                    indicator.textContent = `${this.messageQueue.length} queued`;
+                    indicator.style.display = 'inline-block';
+                } else {
+                    indicator.style.display = 'none';
+                }
+            }
+
+            async processMessageQueue() {
+                if (this.isProcessing || this.messageQueue.length === 0) return;
+
+                this.isProcessing = true;
+
+                while (this.messageQueue.length > 0) {
+                    const currentMessage = this.messageQueue.shift();
+                    this.updateQueueIndicator();
+
+                    // Show typing indicator
+                    this.showTypingIndicator();
+
+                    try {
+                        // Use LiteAgent API call
+                        await this.sendToLiteAgent(currentMessage.text);
+
+                        // Small delay between processing queued messages
+                        await new Promise(resolve => setTimeout(resolve, 800));
+
+                    } catch (error) {
+                        this.hideTypingIndicator();
+                        this.addMessage('claude', 'sorry, something went wrong 😅');
+                    }
+                }
+
+                this.isProcessing = false;
+            }
+
+            async sendToLiteAgent(userMessage) {
+                if (!this.session) {
+                    // Try to reinitialize session
+                    await this.initializeLiteAgent();
+
+                    if (!this.session) {
+                        throw new Error('LiteAgent session not available and failed to reinitialize');
+                    }
+                }
+
+                // Create a temporary message element for streaming
+                const chatArea = document.getElementById('chatArea');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message claude';
+                messageDiv.innerHTML = `
+                    <div class="message-bubble"></div>
+                `;
+
+                // Hide typing indicator and add the message container
+                this.hideTypingIndicator();
+                chatArea.appendChild(messageDiv);
+                chatArea.scrollTop = chatArea.scrollHeight;
+
+                const messageBubble = messageDiv.querySelector('.message-bubble');
+                let fullResponse = '';
+
+                try {
+                    await this.session.chat(
+                        [{ type: 'text', message: userMessage }],
+                        true, // Enable streaming
+                        {
+                            onMessage: (message) => {
+                                // Store in conversation history
+                                this.conversationHistory.push({
+                                    role: 'user',
+                                    content: userMessage
+                                });
+                                this.conversationHistory.push({
+                                    role: 'assistant',
+                                    content: fullResponse
+                                });
+                            },
+                            onChunk: (chunk) => {
+                                if (chunk.part) {
+                                    if (chunk.type === 'text') {
+                                        fullResponse += chunk.part;
+                                    }
+
+                                    // Use throttled update for better performance
+                                    this.throttledUpdateMessage(messageBubble, fullResponse);
+                                }
+                            },
+                            onComplete: () => {
+                                // Final update after completion
+                                messageBubble.innerHTML = this.renderMarkdown(fullResponse);
+                                
+                                // Final scroll to ensure visibility
+                                this.throttledScroll();
+                            },
+                            onError: (error) => {
+                                messageBubble.textContent = 'Sorry, something went wrong 😅';
+                            }
+                        }
+                    );
+                } catch (error) {
+                    // Check if it's a session issue and try to reinitialize
+                    if (error.message.includes('session') || error.message.includes('unauthorized')) {
+                        this.session = null;
+                        messageBubble.textContent = '会话已过期，请重新发送消息。';
+                    } else {
+                        messageBubble.textContent = '抱歉，出现了一些问题 😅 请稍后重试。';
+                    }
+
+                    throw error;
+                }
+            }
+
+            // Test functions
+            testMultipleMessages() {
+                const testMessages = [
+                    "Hey there!",
+                    "How are you doing?",
+                    "What's your favorite color?",
+                    "Tell me a joke!"
+                ];
+
+                testMessages.forEach((msg, i) => {
+                    setTimeout(() => {
+                        document.getElementById('messageInput').value = msg;
+                        this.sendMessage();
+                    }, i * 300);
+                });
+            }
+
+            testCasualResponse() {
+                document.getElementById('messageInput').value = "that's so cool! what do you think about it?";
+                this.sendMessage();
+            }
+
+            testTypingIndicator() {
+                this.showTypingIndicator();
+                setTimeout(() => {
+                    this.hideTypingIndicator();
+                    this.addMessage('claude', 'typing indicator test complete!');
+                }, 3000);
+            }
+        }
+
+        // Global functions
+        function toggleDebug() {
+            const debugContent = document.getElementById('debugContent');
+            debugContent.classList.toggle('active');
+        }
+
+        function testMultipleMessages() {
+            chatApp.testMultipleMessages();
+        }
+
+        function testCasualResponse() {
+            chatApp.testCasualResponse();
+        }
+
+        function testTypingIndicator() {
+            chatApp.testTypingIndicator();
+        }
+
+        function sendMessage() {
+            chatApp.sendMessage();
+        }
+
+        // Initialize chat app
+        const chatApp = new ChatApp();
+    </script>
+</body>
+
+</html>
